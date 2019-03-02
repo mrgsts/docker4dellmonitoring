@@ -1,0 +1,58 @@
+version: "3"
+services:
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    restart: always
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    env_file:
+      - 'env.influxdb'
+    volumes:
+      # Data persistency
+      # sudo mkdir -p /srv/docker/influxdb/data
+      - /srv/docker/influxdb/data:/var/lib/influxdb
+
+  telegraf:
+    #image: telegraf:latest
+    build:
+      context: .
+      dockerfile: Telegraf-Dockerfile
+    container_name: telegraf
+    restart: always
+    #privileged: true
+    #links:
+    #   - influxdb
+    environment:
+      HOST_PROC: /rootfs/proc
+      HOST_SYS: /rootfs/sys
+      #HOST_ETC: /rootfs/etc
+      HOST_MOUNT_PREFIX: /rootfs
+    hostname: telegraf
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      #- /var/run/docker.sock:/var/run/docker.sock:ro
+      #- /:/hostfs:ro
+      - /sys:/rootfs/sys:ro
+      - /proc:/rootfs/proc:ro
+      #- /etc:/rootfs/etc:ro
+      - /var/run/utmp:/var/run/utmp:ro
+    # need to monitor all network interfaces on host
+    network_mode: host
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+    - "3000:3000"
+    env_file:
+      - 'env.grafana'
+    links:
+      - influxdb
+    volumes:
+      # Data persistency
+      # sudo mkdir -p /srv/docker/grafana/data; chown 472:472 /srv/docker/grafana/data
+      - /srv/docker/grafana/data:/var/lib/grafana
